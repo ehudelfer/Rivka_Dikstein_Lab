@@ -8,10 +8,9 @@ or installation is required.
 
 The app is configured for Firebase Realtime Database, with orders stored under
 `/orders`. **Live Cloud Sync Active** indicates an established connection and
-an initial orders snapshot. If the Firebase configuration is cleared, the app
-uses **Local Mode**, which is not shared. Connection or configuration errors do
-not silently switch to local mode; writes are disabled until connected. Reload
-the page after resolving a sync error.
+an initial orders snapshot. Connection or configuration errors do not switch
+to local storage; writes are disabled until connected. Reload the page after
+resolving a sync error.
 
 Use **Export CSV** or **Export JSON** to back up orders. Imports add orders
 and skip IDs already present (up to 400 orders per import). New exports
@@ -46,15 +45,16 @@ billing in Firebase.
 3. Push the updated files to `main` and wait for GitHub Pages to deploy. Open
    the site on two devices and check for **Live Cloud Sync Active**.
 
-Existing local orders are not automatically uploaded. After enabling Firebase,
-use **Export local backup** on the original browser, then import that JSON into
-the live table once. The original browser data remains untouched. Re-imports
-of the same ID-bearing backup are skipped; exports from the older app that have
-no IDs do not have this guarantee. Orders in the former Firestore collection
-are not automatically migrated; export them from the old app and import the
-backup into Realtime Database. Edit and delete operations check the latest
-received order for conflicts, but simultaneous changes can still overwrite one
-another between that check and the write.
+Existing local orders are not automatically uploaded. Use **Export local
+backup** on the original browser, then import that JSON into the live table
+once. This only reads the old browser data; the table uses the database.
+Re-imports of the same ID-bearing backup are skipped. Older local orders
+without IDs receive new IDs in each export, so separately exported backups
+can create duplicates. Orders in the former Firestore collection are not
+automatically migrated; export them from the old app and import the backup
+into Realtime Database. Edit and delete operations check the latest received
+order for conflicts, but simultaneous changes can still overwrite one another
+between that check and the write.
 
 The lab member list is a snapshot of the
 [lab group page](https://www.weizmann.ac.il/Biomolecular_Sciences/dikstein/group)

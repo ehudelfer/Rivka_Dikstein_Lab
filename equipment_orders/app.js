@@ -24,7 +24,6 @@ const columns = [
 const optional = new Set(['productName', 'serialNumber', 'deliveryDate', 'quantity']);
 const $ = id => document.getElementById(id);
 let orders = [];
-let mode = 'starting';
 let connected = false;
 let readable = false;
 let busy = false;
@@ -119,12 +118,7 @@ function readLocalOrders() {
     const original = JSON.parse(raw);
     const result = parseOrders(original);
     if (new Set(result.map(order => order.id)).size !== result.length) throw new Error('The saved data contains duplicate order IDs.');
-    if (JSON.stringify(original) !== JSON.stringify(result)) localStorage.setItem(storageKey, JSON.stringify(result));
     return result;
-}
-function writeLocalOrders(next) {
-    localStorage.setItem(storageKey, JSON.stringify(next));
-    applyOrders(next);
 }
 function withoutId(order) {
     const { id, ...data } = order;
@@ -196,7 +190,7 @@ function renderOrders() {
     body.replaceChildren();
     editControls = null;
     $('emptyState').hidden = orders.length !== 0 || !readable;
-    $('emptyState').textContent = mode === 'cloud' && !connected
+    $('emptyState').textContent = !connected
         ? 'No cached orders are available. Connect to see the shared table.'
         : 'No orders yet. New orders will appear here.';
     $('orderCount').textContent = `${orders.length} ${orders.length === 1 ? 'order' : 'orders'}`;
@@ -292,30 +286,7 @@ async function commit(kind, incoming, baseline = null) {
     try {
         if (kind === 'import' && incoming.length > 400) throw new Error('Import at most 400 orders at a time.');
         let result;
-        if (mode === 'local') {
-            const current = readLocalOrders();
-            if (baseline) {
-                const existing = current.find(order => order.id === baseline.id);
-                if (!existing || !sameOrder(existing, baseline)) throw new Error('This order changed elsewhere. Cancel and reopen it.');
-            }
-            if (kind === 'delete') {
-                writeLocalOrders(current.filter(order => order.id !== baseline.id));
-                result = { added: 0, skipped: 0 };
-            } else if (kind === 'edit') {
-                writeLocalOrders(current.map(order => order.id === baseline.id ? incoming[0] : order));
-                result = { added: 0, skipped: 0 };
-            } else {
-                const ids = new Set(current.map(order => order.id));
-                const added = incoming.filter(order => {
-                    if (ids.has(order.id)) return false;
-                    ids.add(order.id);
-                    return true;
-                });
-                if (kind === 'add' && added.length !== 1) throw new Error('Order ID already exists. Please try again.');
-                writeLocalOrders(kind === 'add' ? [...added, ...current] : [...current, ...added]);
-                result = { added: added.length, skipped: incoming.length - added.length };
-            }
-        } else if (baseline) {
+        if (baseline) {
             const current = orders.find(order => order.id === baseline.id);
             if (!current || !sameOrder(current, baseline)) throw new Error('This order changed elsewhere. Cancel and reopen it.');
             const orderRef = realtime.ref(database, `orders/${baseline.id}`);
@@ -426,22 +397,6 @@ function download(content, type, filename) {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 async function startStorage() {
-    const configured = Object.values(firebaseConfig).some(value => typeof value === 'string' && value.trim());
-    if (!configured) {
-        mode = 'local';
-        setStatus('Local Mode');
-        $('storageNotice').textContent = 'Orders are saved only in this browser and are not shared. Export a backup before clearing browser data or switching devices.';
-        try {
-            const local = readLocalOrders();
-            connected = readable = true;
-            applyOrders(local);
-        } catch (error) {
-            showMessage(`Cannot read saved orders: ${error.message} Existing data was not changed.`, true);
-            renderOrders();
-        }
-        return;
-    }
-    mode = 'cloud';
     setStatus('Connecting...');
     $('storageNotice').textContent = 'Orders use a shared database without login. If database rules allow public access, anyone can read, change, or delete them.';
     try {
@@ -540,19 +495,6 @@ $('importFile').addEventListener('change', async event => {
         }
     } catch (error) { showMessage(`Import failed: ${error.message} No orders were changed.`, true); }
     finally { event.target.value = ''; }
-});
-window.addEventListener('storage', event => {
-    if (mode === 'local' && (event.key === storageKey || event.key === null)) {
-        try {
-            const local = readLocalOrders();
-            connected = readable = true;
-            applyOrders(local);
-        } catch (error) {
-            connected = readable = false;
-            showMessage(`Cannot read saved orders: ${error.message} Existing data was not changed.`, true);
-            renderOrders();
-        }
-    }
 });
 resetForm();
 startStorage();
