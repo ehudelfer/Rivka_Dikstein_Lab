@@ -1,13 +1,15 @@
 'use strict';
 
-// Paste the Firebase web app configuration from Project settings here.
-// Leave all values empty to use this browser's local storage instead.
-// These web configuration values are public; never put service-account keys here.
+// Firebase web configuration is public; never put service-account keys here.
 const firebaseConfig = {
-    apiKey: '',
-    authDomain: '',
-    projectId: '',
-    appId: ''
+    apiKey: 'AIzaSyBm7oyOtqfP2bPRrLay0mVM1SSqVMtd_lE',
+    authDomain: 'rivka-dikstein.firebaseapp.com',
+    databaseURL: 'https://rivka-dikstein-default-rtdb.europe-west1.firebasedatabase.app',
+    projectId: 'rivka-dikstein',
+    storageBucket: 'rivka-dikstein.firebasestorage.app',
+    messagingSenderId: '280677399153',
+    appId: '1:280677399153:web:7fc088d9ee87ac362439d0',
+    measurementId: 'G-3YTFQ5M22E'
 };
 
 const storageKey = 'dikstein-lab-orders-v1';
@@ -28,9 +30,12 @@ let readable = false;
 let busy = false;
 let editing = null;
 let editControls = null;
-let firestore;
+let realtime;
 let database;
-let collectionRef;
+let ordersRef;
+let cloudConnected = false;
+let cloudReady = false;
+let cloudError = false;
 
 function showMessage(text, error = false) {
     $('message').textContent = text;
@@ -38,6 +43,14 @@ function showMessage(text, error = false) {
 }
 function setStatus(text) {
     $('syncStatus').textContent = text;
+}
+function updateCloudStatus() {
+    connected = cloudConnected && cloudReady && !cloudError;
+    setStatus(cloudError ? 'Sync Error' : connected ? 'Live Cloud Sync Active' : 'Offline / connecting');
+    $('emptyState').textContent = !connected
+        ? 'No cached orders are available. Connect to see the shared table.'
+        : 'No orders yet. New orders will appear here.';
+    updateControls();
 }
 function updateControls() {
     const writable = connected && !busy;
@@ -302,35 +315,40 @@ async function commit(kind, incoming, baseline = null) {
                 writeLocalOrders(kind === 'add' ? [...added, ...current] : [...current, ...added]);
                 result = { added: added.length, skipped: incoming.length - added.length };
             }
+        } else if (baseline) {
+            const current = orders.find(order => order.id === baseline.id);
+            if (!current || !sameOrder(current, baseline)) throw new Error('This order changed elsewhere. Cancel and reopen it.');
+            const orderRef = realtime.ref(database, `orders/${baseline.id}`);
+            if (kind === 'delete') await realtime.remove(orderRef);
+            else await realtime.update(orderRef, withoutId(incoming[0]));
+            result = { added: 0, skipped: 0 };
+        } else if (kind === 'add') {
+            await realtime.push(ordersRef, withoutId(incoming[0]));
+            result = { added: 1, skipped: 0 };
+        } else if (incoming.length === 0) {
+            result = { added: 0, skipped: 0 };
         } else {
-            result = await firestore.runTransaction(database, async transaction => {
-                if (baseline) {
-                    const ref = firestore.doc(collectionRef, baseline.id);
-                    const snapshot = await transaction.get(ref);
-                    const current = snapshot.exists() ? validateOrder({ ...snapshot.data(), id: snapshot.id }) : null;
-                    if (!current || !sameOrder(current, baseline)) throw new Error('This order changed elsewhere. Cancel and reopen it.');
-                    if (kind === 'delete') transaction.delete(ref);
-                    else transaction.set(ref, withoutId(incoming[0]));
-                    return { added: 0, skipped: 0 };
-                }
-                const seen = new Set();
-                const unique = incoming.filter(order => {
-                    if (seen.has(order.id)) return false;
-                    seen.add(order.id);
-                    return true;
-                });
-                const references = unique.map(order => firestore.doc(collectionRef, order.id));
-                const snapshots = await Promise.all(references.map(ref => transaction.get(ref)));
-                if (kind === 'add' && snapshots[0].exists()) throw new Error('Order ID already exists. Please try again.');
-                let added = 0;
-                snapshots.forEach((snapshot, index) => {
-                    if (!snapshot.exists()) {
-                        transaction.set(references[index], withoutId(unique[index]));
+            const seen = new Set();
+            const unique = incoming.filter(order => {
+                if (seen.has(order.id)) return false;
+                seen.add(order.id);
+                return true;
+            });
+            let added = 0;
+            const transaction = await realtime.runTransaction(ordersRef, current => {
+                if (current !== null && typeof current !== 'object') throw new Error('The orders database is not a collection.');
+                const next = { ...current };
+                added = 0;
+                for (const order of unique) {
+                    if (!Object.prototype.hasOwnProperty.call(next, order.id)) {
+                        next[order.id] = withoutId(order);
                         added++;
                     }
-                });
-                return { added, skipped: incoming.length - added };
-            });
+                }
+                return next;
+            }, { applyLocally: false });
+            if (!transaction.committed) throw new Error('The import transaction was not committed.');
+            result = { added, skipped: incoming.length - added };
         }
         return result;
     } catch (error) {
@@ -425,40 +443,46 @@ async function startStorage() {
     }
     mode = 'cloud';
     setStatus('Connecting...');
-    $('storageNotice').textContent = 'Orders are shared live. This no-login database is public: anyone can read, change, or delete its orders.';
+    $('storageNotice').textContent = 'Orders use a shared database without login. If database rules allow public access, anyone can read, change, or delete them.';
     try {
         try {
             $('exportLocal').hidden = localStorage.getItem(storageKey) === null;
         } catch (error) {
             showMessage(`Cannot access the local backup: ${error.message}`, true);
         }
-        if (!firebaseConfig.apiKey || !firebaseConfig.projectId || !firebaseConfig.appId) {
-            throw new Error('Firebase configuration is incomplete. Fill in apiKey, projectId, and appId.');
+        if (!firebaseConfig.apiKey || !firebaseConfig.databaseURL || !firebaseConfig.projectId || !firebaseConfig.appId) {
+            throw new Error('Firebase configuration is incomplete. Fill in apiKey, databaseURL, projectId, and appId.');
         }
         const firebase = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js');
-        firestore = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js');
-        database = firestore.getFirestore(firebase.initializeApp(firebaseConfig));
-        collectionRef = firestore.collection(database, 'lab_orders');
-        firestore.onSnapshot(collectionRef, { includeMetadataChanges: true }, snapshot => {
+        realtime = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js');
+        database = realtime.getDatabase(firebase.initializeApp(firebaseConfig));
+        ordersRef = realtime.ref(database, 'orders');
+        const syncFailed = error => {
+            cloudError = true;
+            updateCloudStatus();
+            showMessage(`Cloud sync failed: ${error.message}. Orders were not switched to local mode. Check Realtime Database rules and reload to retry.`, true);
+        };
+        realtime.onValue(realtime.ref(database, '.info/connected'), snapshot => {
+            cloudConnected = snapshot.val() === true;
+            updateCloudStatus();
+        }, syncFailed);
+        realtime.onValue(ordersRef, snapshot => {
             try {
-                const next = snapshot.docs.map(doc => validateOrder({ ...doc.data(), id: doc.id }));
+                const next = [];
+                snapshot.forEach(child => {
+                    next.push(validateOrder({ ...child.val(), id: child.key }));
+                });
                 next.sort((a, b) => b.insertDate.localeCompare(a.insertDate) || a.id.localeCompare(b.id));
                 readable = true;
-                connected = !snapshot.metadata.fromCache && !snapshot.metadata.hasPendingWrites;
-                setStatus(connected ? 'Live Sync Active' : 'Offline / connecting');
+                cloudReady = true;
+                updateCloudStatus();
                 applyOrders(next);
             } catch (error) {
-                connected = false;
-                setStatus('Sync Error');
+                cloudReady = false;
+                updateCloudStatus();
                 showMessage(`Cannot display cloud orders: ${error.message}`, true);
-                updateControls();
             }
-        }, error => {
-            connected = false;
-            setStatus('Sync Error');
-            showMessage(`Cloud sync failed: ${error.message}. Orders were not switched to local mode. Reload to retry.`, true);
-            updateControls();
-        });
+        }, syncFailed);
     } catch (error) {
         connected = false;
         setStatus('Sync Error');
