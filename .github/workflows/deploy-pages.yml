@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - index.html
+      - equipment_orders/index.html
       - .github/workflows/deploy-pages.yml
   workflow_dispatch:
 
@@ -29,8 +30,8 @@ jobs:
         uses: actions/checkout@v4
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
-      - name: Prepare static landing page
-        run: mkdir _site && cp index.html _site/index.html
+      - name: Prepare ordering site
+        run: mkdir _site && cp equipment_orders/index.html _site/index.html
       - name: Upload site files
         uses: actions/upload-pages-artifact@v3
         with:
