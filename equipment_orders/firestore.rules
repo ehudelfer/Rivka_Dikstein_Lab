@@ -1,0 +1,33 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /lab_orders/{orderId} {
+      function validOrder() {
+        let data = request.resource.data;
+        return data.keys().hasAll([
+            'insertDate', 'memberName', 'orderedItem', 'quantity', 'productName',
+            'serialNumber', 'sortingGroup', 'deliveryDate', 'status'
+          ])
+          && data.keys().hasOnly([
+            'insertDate', 'memberName', 'orderedItem', 'quantity', 'productName',
+            'serialNumber', 'sortingGroup', 'deliveryDate', 'status'
+          ])
+          && data.insertDate is string
+          && data.insertDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          && data.memberName is string && data.memberName.size() > 0
+          && data.orderedItem is string && data.orderedItem.size() > 0
+          && data.quantity is int && data.quantity >= 1 && data.quantity <= 9007199254740991
+          && data.productName is string
+          && data.serialNumber is string
+          && data.sortingGroup in ['Weizmann Warehouse', 'External Supplier']
+          && data.deliveryDate is string
+          && (data.deliveryDate == '' || data.deliveryDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'))
+          && data.status in ['Pending', 'Ordered', 'Delivered', 'Cancelled'];
+      }
+
+      // Intentionally public: suitable only for non-sensitive data.
+      allow read, delete: if true;
+      allow create, update: if validOrder();
+    }
+  }
+}

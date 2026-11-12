@@ -7,6 +7,7 @@ on:
     paths:
       - index.html
       - equipment_orders/index.html
+      - equipment_orders/app.js
       - .github/workflows/deploy-pages.yml
   workflow_dispatch:
 
@@ -31,7 +32,7 @@ jobs:
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
       - name: Prepare ordering site
-        run: mkdir _site && cp equipment_orders/index.html _site/index.html
+        run: mkdir _site && cp equipment_orders/index.html equipment_orders/app.js _site/
       - name: Upload site files
         uses: actions/upload-pages-artifact@v3
         with:
