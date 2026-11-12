@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratory Equipment Ordering System</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 30px; background-color: #f9f9f9; }
+        h2 { color: #2c3e50; }
+        .auth-box, .form-box { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        input, select, button { margin: 5px 0; padding: 8px; width: 100%; box-sizing: border-box; }
+        button { background-color: #3498db; color: white; border: none; cursor: pointer; border-radius: 4px; font-weight: bold; }
+        button:hover { background-color: #2980b9; }
+        table { width: 100%; border-collapse: collapse; background: white; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #34495e; color: white; }
+        .editable { background-color: #fff9db; }
+        .hidden { display: none; }
+        .msg { padding: 10px; margin-top: 10px; border-radius: 4px; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .success { background-color: #d4edda; color: #155724; }
+    </style>
+</head>
+<body>
+
+    <h2>🔬 Laboratory Equipment Ordering System</h2>
+
+    <!-- Login Box -->
+    <div class="auth-box">
+        <h3>User Verification</h3>
+        <label for="userEmail">Enter your Email:</label>
+        <input type="email" id="userEmail" placeholder="user@weizmann.ac.il">
+        <button onclick="authenticateUser()">Verify Email</button>
+        <div id="authMsg" class="msg hidden"></div>
+    </div>
+
+    <!-- Order Entry Form (Restricted to Weizmann Users) -->
+    <div id="orderFormBox" class="form-box hidden">
+        <h3>Add New Order Entry</h3>
+        <form id="orderForm" onsubmit="addOrder(event)">
+            <label>Insert Date:</label>
+            <input type="date" id="insertDate" required>
+            
+            <label>Lab Member Name:</label>
+            <input type="text" id="memberName" placeholder="Dr. John Doe" required>
+            
+            <label>Ordered Item:</label>
+            <input type="text" id="orderedItem" placeholder="Pipette Tips 200ul" required>
+            
+            <label>Product Name:</label>
+            <input type="text" id="productName" placeholder="Eppendorf Research Plus" required>
+            
+            <label>Serial Number:</label>
+            <input type="text" id="serialNumber" placeholder="SN-987654" required>
+            
+            <label>Sorting Group:</label>
+            <select id="sortingGroup" required>
+                <option value="Weizmann Warehouse">Weizmann Warehouse</option>
+                <option value="External Supplier">External Supplier</option>
+            </select>
+            
+            <label>Expected Delivery Date:</label>
+            <input type="date" id="deliveryDate" required>
+            
+            <label>Status:</label>
+            <select id="status" required>
+                <option value="Pending">Pending</option>
+                <option value="Ordered">Ordered</option>
+                <option value="Delivered">Delivered</option>
+                <option value="Cancelled">Cancelled</option>
+            </select>
+
+            <button type="submit">Add to Order Table</button>
+        </form>
+    </div>
+
+    <!-- Order Table -->
+    <h3>Order Status Table</h3>
+    <table id="orderTable">
+        <thead>
+            <tr>
+                <th>Insert Date</th>
+                <th>Lab Member Name</th>
+                <th>Ordered Item</th>
+                <th>Product Name</th>
+                <th>Serial Number</th>
+                <th>Sorting Group</th>
+                <th>Expected Delivery Date</th>
+                <th>Status</th>
+                <th id="actionsHeader" class="hidden">Actions</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            <!-- Table rows populated dynamically -->
+        </tbody>
+    </table>
+
+    <script>
+        let isAuthorized = false;
+
+        function authenticateUser() {
+            const email = document.getElementById('userEmail').value.trim().toLowerCase();
+            const msgBox = document.getElementById('authMsg');
+            
+            // Validate domain strictly for Weizmann users
+            if (email.endsWith('@weizmann.ac.il') || email.endsWith('@weizzman.ac.il')) {
+                isAuthorized = true;
+                msgBox.className = "msg success";
+                msgBox.innerText = "Authorized: Weizmann user verified. Full access granted.";
+                document.getElementById('orderFormBox').classList.remove('hidden');
+                document.getElementById('actionsHeader').classList.remove('hidden');
+            } else {
+                isAuthorized = false;
+                msgBox.className = "msg error";
+                msgBox.innerText = "Access Restricted: Read-only mode. Only Weizmann users can add or modify orders.";
+                document.getElementById('orderFormBox').classList.add('hidden');
+                document.getElementById('actionsHeader').classList.add('hidden');
+            }
+            msgBox.classList.remove('hidden');
+            renderTable();
+        }
+
+        function addOrder(e) {
+            e.preventDefault();
+            if (!isAuthorized) return;
+
+            const rowData = {
+                insertDate: document.getElementById('insertDate').value,
+                memberName: document.getElementById('memberName').value,
+                orderedItem: document.getElementById('orderedItem').value,
+                productName: document.getElementById('productName').value,
+                serialNumber: document.getElementById('serialNumber').value,
+                sortingGroup: document.getElementById('sortingGroup').value,
+                deliveryDate: document.getElementById('deliveryDate').value,
+                status: document.getElementById('status').value
+            };
+
+            addRowToTable(rowData);
+            document.getElementById('orderForm').reset();
+        }
+
+        function addRowToTable(data) {
+            const tbody = document.getElementById('tableBody');
+            const row = document.createElement('tr');
+
+            row.innerHTML = `
+                <td contenteditable="${isAuthorized}">${data.insertDate}</td>
+                <td contenteditable="${isAuthorized}">${data.memberName}</td>
+                <td contenteditable="${isAuthorized}">${data.orderedItem}</td>
+                <td contenteditable="${isAuthorized}">${data.productName}</td>
+                <td contenteditable="${isAuthorized}">${data.serialNumber}</td>
+                <td contenteditable="${isAuthorized}">${data.sortingGroup}</td>
+                <td contenteditable="${isAuthorized}">${data.deliveryDate}</td>
+                <td contenteditable="${isAuthorized}">${data.status}</td>
+                ${isAuthorized ? '<td><button style="background-color:#e74c3c;" onclick="this.closest(\'tr\').remove()">Delete</button></td>' : ''}
+            `;
+            tbody.appendChild(row);
+        }
+
+        function renderTable() {
+            const rows = document.querySelectorAll('#tableBody tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                for (let i = 0; i < cells.length - 1; i++) {
+                    cells[i].contentEditable = isAuthorized;
+                }
+            });
+        }
+    </script>
+</body>
+</html>
