@@ -66,6 +66,20 @@
         .badge-cancelled { background: #fbe9e9; color: #9b4545; }
         .row-actions { display: flex; gap: 6px; }
         .row-actions button { min-height: 34px; padding: 0 10px; font-size: 12px; }
+        .mode-link { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 8px; color: var(--dark); background: #e8f3f3; font-weight: 700; text-decoration: none; }
+        .mode-link:hover { background: #d7eaea; }
+        .delivery-list { display: grid; gap: 12px; }
+        .delivery-card { display: flex; align-items: flex-start; gap: 15px; padding: 18px; border: 1px solid #d9e7ea; border-radius: 12px; cursor: pointer; }
+        .delivery-card:hover { background: #f5fafb; }
+        .delivery-card input[type="checkbox"] { width: 26px; min-height: 26px; height: 26px; flex: 0 0 26px; padding: 0; accent-color: var(--teal); }
+        .delivery-details { min-width: 0; flex: 1; }
+        .delivery-name { display: block; font-size: 17px; color: var(--ink); overflow-wrap: anywhere; }
+        .delivery-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; margin: 10px 0 0; font-weight: 400; }
+        .delivery-meta div { min-width: 0; }
+        .delivery-meta dt { color: var(--muted); font-size: 11px; }
+        .delivery-meta dd { margin: 0; color: var(--ink); font-size: 13px; overflow-wrap: anywhere; }
+        .delivery-actions { margin-top: 20px; }
+        .delivery-actions button { width: 100%; min-height: 52px; }
         .empty { text-align: center; color: var(--muted); padding: 35px; }
         [hidden] { display: none !important; }
         @media (max-width: 650px) {
@@ -88,12 +102,19 @@
     </header>
     <main>
         <div class="intro">
-            <div><div class="eyebrow">Laboratory workspace</div><h1>Equipment orders</h1><p class="subtext">Track supplies from request to delivery.</p></div>
+            <div><div class="eyebrow">Laboratory workspace</div><h1 id="pageTitle">Equipment orders</h1><p class="subtext" id="pageDescription">Track supplies from request to delivery.</p></div>
             <span class="pill" id="syncStatus" role="status" aria-live="polite">Starting...</span>
         </div>
         <div class="notice" id="storageNotice">Connecting to the shared database...</div>
         <div id="message" class="notice" role="status" aria-live="polite"></div>
-        <section class="card" aria-labelledby="formTitle">
+        <div class="actions" style="margin: 0 0 20px"><a class="mode-link" id="modeLink" href="?mode=delivery">Delivery Receiving Mode</a></div>
+        <section class="card" id="deliverySection" aria-labelledby="deliveryTitle" hidden>
+            <div class="card-heading"><div><h2 id="deliveryTitle">Receive Delivery / Mark Arrived</h2><p class="subtext">Select the ordered items that have arrived.</p></div><span class="pill" id="deliveryCount">0 ordered</span></div>
+            <div class="delivery-list" id="deliveryList"></div>
+            <div class="empty" id="deliveryEmpty">Connecting to orders...</div>
+            <div class="delivery-actions"><button class="primary" type="button" id="confirmDelivery" disabled>Confirm &amp; Mark Selected as Delivered (הגיע)</button></div>
+        </section>
+        <section class="card" id="formSection" aria-labelledby="formTitle">
             <div class="card-heading"><div><h2 id="formTitle">Add an order</h2><p class="subtext">Enter the details below to add an item to your tracker.</p></div></div>
             <form id="orderForm">
                 <div class="grid">
@@ -112,7 +133,7 @@
                 <div class="actions"><button class="primary" type="submit" data-mutation disabled>Add to orders</button><button class="secondary" type="reset">Reset form</button></div>
             </form>
         </section>
-        <section class="card" aria-labelledby="ordersTitle">
+        <section class="card" id="ordersSection" aria-labelledby="ordersTitle">
             <div class="card-heading">
                 <div><h2 id="ordersTitle">Order tracker</h2><p class="subtext">Edit details inline, or export and import a backup.</p></div>
                 <span class="pill" id="orderCount">0 orders</span>

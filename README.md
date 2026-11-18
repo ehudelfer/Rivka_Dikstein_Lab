@@ -25,6 +25,18 @@ import cannot restore the file. The actual order date is set when an order
 changes to Ordered and can be adjusted when editing. Ordered and Delivered
 rows provide an order-number field.
 
+For receiving, open the site with `?mode=delivery` or `#delivery`, or choose
+**Delivery Receiving Mode** on the dashboard. Select ordered items and confirm
+to mark them Delivered with today's local delivery date. The list updates live;
+failed updates remain selectable and are reported. The page checks current
+status before each update, but another user's concurrent change can still race
+with that check.
+
+Run `python equipment_orders/generate_qr.py` with the `qrcode` and Pillow
+packages installed to create `lab_orders_qr.png` and
+`delivery_receiving_qr.png` in the current directory. Both use the GitHub Pages
+root, where the deployment publishes the application.
+
 ### Enable Realtime Database live sync
 
 **Public access warning:** If the Realtime Database rules permit this no-login

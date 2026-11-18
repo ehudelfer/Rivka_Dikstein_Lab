@@ -24,7 +24,10 @@ const columns = [
     ['sortingGroup', 'Sorting Group'], ['deliveryDate', 'Expected Delivery Date'], ['status', 'Status'],
     ['actualOrderDate', 'Actual Order Date'], ['orderNumber', 'Order Number'], ['quoteFileName', 'Price Quote']
 ];
-const optional = new Set(['productName', 'serialNumber', 'deliveryDate', 'quantity', 'actualOrderDate', 'orderNumber', 'quoteFileName']);
+const csvColumns = [...columns, ['deliveredDate', 'Delivered Date']];
+const optional = new Set(['productName', 'serialNumber', 'deliveryDate', 'quantity', 'actualOrderDate', 'orderNumber', 'quoteFileName', 'deliveredDate']);
+const deliveryMode = new URLSearchParams(location.search).get('mode') === 'delivery' || location.hash === '#delivery';
+const selectedDeliveries = new Set();
 const $ = id => document.getElementById(id);
 let orders = [];
 let connected = false;
@@ -69,6 +72,8 @@ function updateControls() {
     document.querySelectorAll('#tableBody [data-order-number]').forEach(input => {
         input.disabled = !writable || Boolean(editing);
     });
+    document.querySelectorAll('#deliveryList input[type="checkbox"]').forEach(input => { input.disabled = !writable; });
+    $('confirmDelivery').disabled = !writable || selectedDeliveries.size === 0;
 }
 function today() {
     const now = new Date();
@@ -111,6 +116,11 @@ function validateOrder(item) {
     }
     if (!groups.includes(order.sortingGroup)) throw new Error('Invalid sorting group.');
     if (!statuses.includes(order.status)) throw new Error('Invalid status.');
+    const deliveredDate = item.deliveredDate === undefined ? '' : item.deliveredDate;
+    if (typeof deliveredDate !== 'string' || (deliveredDate && !validDate(deliveredDate))) {
+        throw new Error('Delivered Date must be empty or a valid YYYY-MM-DD date.');
+    }
+    order.deliveredDate = deliveredDate;
     const quoteData = item.quoteFileData === undefined ? '' : item.quoteFileData;
     if (typeof quoteData !== 'string') throw new Error('Price quote data must be text.');
     if (quoteData) {
@@ -188,8 +198,101 @@ function applyOrders(next) {
         }
     }
     orders = next;
-    renderOrders();
+    if (deliveryMode) renderDeliveries();
+    else renderOrders();
     updateDuplicateWarning();
+}
+function renderDeliveries() {
+    const ordered = orders.filter(order => order.status === 'Ordered');
+    if (!busy) {
+        const available = new Set(ordered.map(order => order.id));
+        let removed = false;
+        for (const id of selectedDeliveries) {
+            if (!available.has(id)) { selectedDeliveries.delete(id); removed = true; }
+        }
+        if (removed) showMessage('Some selected items are no longer ordered and were removed from the selection.', true);
+    }
+    $('deliveryCount').textContent = `${ordered.length} ordered`;
+    $('deliveryEmpty').hidden = ordered.length > 0;
+    $('deliveryEmpty').textContent = !readable ? 'Connecting to orders...' : 'No ordered items are awaiting delivery.';
+    const list = $('deliveryList');
+    list.replaceChildren();
+    for (const order of ordered) {
+        const card = document.createElement('label');
+        card.className = 'delivery-card';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = selectedDeliveries.has(order.id);
+        checkbox.setAttribute('aria-label', `Select ${order.orderedItem} for ${order.memberName}`);
+        checkbox.addEventListener('change', () => {
+            if (checkbox.checked) selectedDeliveries.add(order.id);
+            else selectedDeliveries.delete(order.id);
+            updateControls();
+        });
+        const details = document.createElement('div');
+        details.className = 'delivery-details';
+        const name = document.createElement('strong');
+        name.className = 'delivery-name';
+        name.textContent = order.orderedItem;
+        const meta = document.createElement('dl');
+        meta.className = 'delivery-meta';
+        for (const [label, value] of [
+            ['Quantity', order.quantity], ['Lab member', order.memberName],
+            ['Sorting group', order.sortingGroup], ['Actual order date', order.actualOrderDate || '—'],
+            ['Order number', order.orderNumber || '—']
+        ]) {
+            const entry = document.createElement('div');
+            const term = document.createElement('dt');
+            const description = document.createElement('dd');
+            term.textContent = label;
+            description.textContent = String(value);
+            entry.append(term, description);
+            meta.append(entry);
+        }
+        details.append(name, meta);
+        card.append(checkbox, details);
+        list.append(card);
+    }
+    updateControls();
+}
+async function confirmDeliveries() {
+    if (!connected || busy || selectedDeliveries.size === 0) {
+        showMessage('Select ordered items while connected before confirming delivery.', true);
+        return;
+    }
+    const selected = [...selectedDeliveries];
+    let delivered = 0;
+    let skipped = 0;
+    const failures = [];
+    busy = true;
+    updateControls();
+    try {
+        for (const id of selected) {
+            const item = orders.find(order => order.id === id);
+            try {
+                if (!connected) throw new Error('Disconnected; retry when connected.');
+                const ref = realtime.ref(database, `orders/${id}`);
+                const snapshot = await realtime.get(ref);
+                if (!snapshot.exists() || snapshot.val().status !== 'Ordered') {
+                    selectedDeliveries.delete(id);
+                    skipped++;
+                    continue;
+                }
+                await realtime.update(ref, { status: 'Delivered', deliveredDate: today() });
+                selectedDeliveries.delete(id);
+                delivered++;
+            } catch (error) {
+                failures.push(`${item ? item.orderedItem : id}: ${error.message}`);
+            }
+        }
+    } finally {
+        busy = false;
+        renderDeliveries();
+    }
+    const result = `${delivered} ${delivered === 1 ? 'item' : 'items'} marked Delivered.`;
+    const skippedMessage = skipped ? ` ${skipped} no longer ordered and skipped.` : '';
+    const failureMessage = failures.length ? ` Failed: ${failures.join('; ')}` : '';
+    showMessage(result + skippedMessage + failureMessage, failures.length > 0 || skipped > 0);
 }
 function updateDuplicateWarning() {
     const item = $('orderedItem').value.trim().toLocaleLowerCase();
@@ -435,8 +538,8 @@ function csvField(value) {
 }
 function toCsv() {
     const rows = [
-        ['Order ID', ...columns.map(([, label]) => label)],
-        ...orders.map(order => [order.id, ...columns.map(([key]) => order[key])])
+        ['Order ID', ...csvColumns.map(([, label]) => label)],
+        ...orders.map(order => [order.id, ...csvColumns.map(([key]) => order[key])])
     ];
     return rows.map(row => row.map(csvField).join(',')).join('\r\n') + '\r\n';
 }
@@ -468,7 +571,7 @@ function parseCsv(text) {
     if (row.length || field || closedQuote) { row.push(field); rows.push(row); }
     if (!rows.length) throw new Error('The CSV file is empty.');
     const header = rows.shift();
-    const indexes = columns.map(([key, label]) => {
+    const indexes = csvColumns.map(([key, label]) => {
         const matches = header.reduce((found, value, index) => {
             if (value.trim() === label || value.trim() === key) found.push(index);
             return found;
@@ -482,7 +585,7 @@ function parseCsv(text) {
     if (idIndexes.length > 1) throw new Error('CSV contains multiple order ID columns.');
     return rows.filter(values => values.some(value => value.trim() !== '')).map((values, index) => {
         if (values.length !== header.length) throw new Error(`CSV row ${index + 2} has the wrong number of columns.`);
-        const result = Object.fromEntries(columns.map(([key], position) => [key, indexes[position] < 0 ? undefined : values[indexes[position]]]));
+        const result = Object.fromEntries(csvColumns.map(([key], position) => [key, indexes[position] < 0 ? undefined : values[indexes[position]]]));
         if (idIndexes.length && values[idIndexes[0]].trim()) result.id = values[idIndexes[0]].trim();
         return result;
     });
@@ -543,6 +646,27 @@ async function startStorage() {
         updateControls();
     }
 }
+
+const modeUrl = new URL(location.href);
+if (deliveryMode) {
+    modeUrl.searchParams.delete('mode');
+    if (modeUrl.hash === '#delivery') modeUrl.hash = '';
+    $('pageTitle').textContent = 'Receive delivery';
+    $('pageDescription').textContent = 'Mark ordered items as arrived.';
+    $('modeLink').textContent = 'View Full Orders Table';
+} else {
+    modeUrl.searchParams.set('mode', 'delivery');
+    modeUrl.hash = '';
+}
+$('modeLink').href = modeUrl.href;
+$('formSection').hidden = deliveryMode;
+$('ordersSection').hidden = deliveryMode;
+$('deliverySection').hidden = !deliveryMode;
+$('confirmDelivery').addEventListener('click', confirmDeliveries);
+window.addEventListener('hashchange', () => {
+    const nextMode = new URLSearchParams(location.search).get('mode') === 'delivery' || location.hash === '#delivery';
+    if (nextMode !== deliveryMode) location.reload();
+});
 
 const memberSelect = makeSelect(['', ...members, 'Other'], '', 'Lab member name');
 memberSelect.firstElementChild.textContent = 'Select a lab member';
