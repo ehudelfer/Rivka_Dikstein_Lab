@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>האפי אוור מקסיקני במחלקה | מוקדש לד"ר ענת בהט</title>
+    <!-- טעינת Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- טעינת גופנים עבריים חגיגיים וקריאים: Rubik ו-Heebo -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&family=Rubik:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Heebo', 'sans-serif'],
+                        display: ['Rubik', 'sans-serif'],
+                    },
+                    colors: {
+                        fiesta: {
+                            red: '#D93829',
+                            orange: '#F26419',
+                            gold: '#F6AE2D',
+                            lime: '#55A630',
+                            cactus: '#2B9348',
+                            teal: '#006D77',
+                            sand: '#FFFDF7',
+                            cream: '#FDF6E9'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* דפוס גיאומטרי עדין בהשראת אריחי טלוורה מקסיקניים */
+        .mexican-pattern {
+            background-color: #FFFDF7;
+            background-image: radial-gradient(#F6AE2D 0.85px, transparent 0.85px), radial-gradient(#D93829 0.85px, #FFFDF7 0.85px);
+            background-size: 34px 34px;
+            background-position: 0 0, 17px 17px;
+        }
+        /* פס צבעוני בסגנון פונצ'ו / דגלוני פיאסטה */
+        .papel-picado-border {
+            background: repeating-linear-gradient(
+                90deg,
+                #D93829 0px, #D93829 40px,
+                #F6AE2D 40px, #F6AE2D 80px,
+                #2B9348 80px, #2B9348 120px,
+                #006D77 120px, #006D77 160px,
+                #F26419 160px, #F26419 200px
+            );
+        }
+        /* עיצוב מותאם להדפסה ושמירה כ-PDF */
+        @media print {
+            body { background: white !important; }
+            .no-print { display: none !important; }
+            .print-shadow-none { box-shadow: none !important; border: 1px solid #e5e7eb !important; }
+            .page-break-inside { break-inside: avoid; }
+            .category-card { display: flex !important; }
+        }
+    </style>
+</head>
+<body class="mexican-pattern text-slate-800 antialiased selection:bg-amber-200 selection:text-slate-900">
+
+    <!-- פס עליון חגיגי -->
+    <div class="h-3 w-full papel-picado-border"></div>
+
+    <!-- כפתורי פעולה עליונים (מוסתרים בהדפסה) -->
+    <div class="no-print max-w-6xl mx-auto px-4 pt-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2 text-sm font-medium text-slate-600 bg-white/90 backdrop-blur px-3.5 py-1.5 rounded-full shadow-sm border border-amber-200">
+            <span>🛒 רשימת קניות אינטראקטיבית:</span>
+            <span id="checkedCounter" class="font-bold text-fiesta-cactus">0 / 18 פריטים סומנו</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <button onclick="resetChecklist()" class="px-4 py-2 text-sm font-semibold text-slate-700 bg-white hover:bg-amber-50 border border-slate-200 rounded-xl shadow-sm transition cursor-pointer">
+                איפוס סימונים
+            </button>
+            <button onclick="printAll()" class="px-5 py-2 text-sm font-bold text-white bg-fiesta-red hover:bg-red-700 rounded-xl shadow-md hover:shadow-lg transition flex items-center gap-2 cursor-pointer">
+                <span>🖨️ הדפס / שמור כ-PDF לשיתוף</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- מיכל ראשי -->
+    <main class="max-w-6xl mx-auto px-4 py-6 sm:py-8 space-y-8">
+
+        <!-- באנר כותרת והקדשה לד"ר ענת בהט -->
+        <header class="relative overflow-hidden rounded-3xl bg-gradient-to-bl from-fiesta-teal via-[#00565E] to-slate-900 text-white shadow-xl print-shadow-none p-6 sm:p-10">
+            <!-- אלמנטים דקורטיביים ברקע -->
+            <div class="absolute -left-10 -top-10 w-44 h-44 rounded-full bg-fiesta-gold/15 blur-2xl pointer-events-none"></div>
+            <div class="absolute -right-10 -bottom-10 w-52 h-52 rounded-full bg-fiesta-red/20 blur-2xl pointer-events-none"></div>
+
+            <div class="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-8">
+                <!-- צד ימין: כותרת ראשית -->
+                <div class="text-center lg:text-right space-y-3 flex-1">
+                    <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/15 backdrop-blur-sm border border-white/20 text-amber-300 text-sm font-bold tracking-wide">
+                        <span>🎉 FIESTA TIME</span>
+                        <span>•</span>
+                        <span>תכנון אירוע מחלקתי</span>
+                    </div>
+                    <h1 class="font-display text-3xl sm:text-5xl font-black tracking-tight leading-tight">
+                        🌮 האפי אוור מקסיקני במחלקה 🍹
+                    </h1>
+                    <p class="text-teal-100 text-base sm:text-lg max-w-2xl">
+                        תפריט נאצ'וס ודיפים מוכנים, בר מוחיטו-טקילה רענן ו-3 פיניאטות חגיגיות ל-55–60 משתתפים.
+                    </p>
+                </div>
+
+                <!-- צד שמאל: כרטיס הקדשה חגיגי לד"ר ענת בהט -->
+                <div class="w-full lg:w-[440px] bg-gradient-to-br from-amber-50 to-orange-50 text-slate-900 rounded-2xl p-6 shadow-lg border-2 border-fiesta-gold relative">
+                    <div class="absolute -top-3.5 right-6 bg-fiesta-red text-white text-xs font-extrabold px-3 py-1 rounded-full shadow">
+                        ✨ הקדשה מיוחדת ✨
+                    </div>
+                    <div class="flex items-start gap-3.5 pt-1">
+                        <div class="text-4xl select-none shrink-0">🌵</div>
+                        <div class="space-y-1.5">
+                            <h2 class="font-display text-xl font-extrabold text-fiesta-teal">
+                                מוקדש בהוקרה לד״ר ענת בהט
+                            </h2>
+                            <p class="text-xs font-bold uppercase tracking-wider text-fiesta-orange">
+                                מנהלת המעבדה • מצוות המעבדה והמחלקה
+                            </p>
+                            <p class="text-sm text-slate-700 leading-relaxed pt-1">
+                                תודה ענקית על הניהול המסור, התמיכה היומיומית, האוזן הקשבת והאווירה המדהימה שאת משרה במעבדה ובמחלקה כולה! לחיי עוד המון הצלחות ורגעים שמחים יחד 🥂✨
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- כרטיסי מדדים ותקציב (KPI Cards) -->
+        <section class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white rounded-2xl p-5 shadow-md border-b-4 border-fiesta-teal print-shadow-none">
+                <div class="text-sm font-medium text-slate-500 flex items-center justify-between">
+                    <span>תקציב כולל</span>
+                    <span class="text-xl">💰</span>
+                </div>
+                <div class="font-display text-3xl font-black text-slate-900 mt-1">2,000 ₪</div>
+                <div class="text-xs text-slate-400 mt-1">מסגרת תקציב מאושרת</div>
+            </div>
+
+            <div class="bg-white rounded-2xl p-5 shadow-md border-b-4 border-fiesta-orange print-shadow-none">
+                <div class="text-sm font-medium text-slate-500 flex items-center justify-between">
+                    <span>עלות מתוכננת</span>
+                    <span class="text-xl">🧾</span>
+                </div>
+                <div class="font-display text-3xl font-black text-fiesta-orange mt-1">1,925 ₪</div>
+                <div class="text-xs text-slate-400 mt-1">כולל אלכוהול, דיפים ופיניאטות</div>
+            </div>
+
+            <div class="bg-white rounded-2xl p-5 shadow-md border-b-4 border-fiesta-cactus print-shadow-none">
+                <div class="text-sm font-medium text-slate-500 flex items-center justify-between">
+                    <span>יתרה לבלת"מים</span>
+                    <span class="text-xl">🛡️</span>
+                </div>
+                <div class="font-display text-3xl font-black text-fiesta-cactus mt-1">75 ₪</div>
+                <div class="text-xs text-slate-400 mt-1">גמישות להשלמות במקום</div>
+            </div>
+
+            <div class="bg-white rounded-2xl p-5 shadow-md border-b-4 border-fiesta-gold print-shadow-none">
+                <div class="text-sm font-medium text-slate-500 flex items-center justify-between">
+                    <span>משתתפים</span>
+                    <span class="text-xl">👥</span>
+                </div>
+                <div class="font-display text-3xl font-black text-slate-900 mt-1">55–60 איש</div>
+                <div class="text-xs text-slate-400 mt-1">חישוב מנות נדיב למחלקה</div>
+            </div>
+        </section>
+
+        <!-- התפלגות תקציב ויזואלית (Stacked Bar) -->
+        <section class="bg-white rounded-2xl p-6 shadow-md border border-amber-100 print-shadow-none page-break-inside">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                <h3 class="font-display text-lg font-bold text-slate-800">📊 התפלגות התקציב (2,000 ₪)</h3>
+                <span class="text-xs font-medium text-slate-500">מבוסס על מחירי שופרסל וחנויות מסיבות</span>
+            </div>
+
+            <!-- בר אופקי מחולק -->
+            <div class="w-full h-7 rounded-full overflow-hidden flex shadow-inner bg-slate-100 text-[11px] font-bold text-white">
+                <div style="width: 40%" class="bg-fiesta-teal flex items-center justify-center transition-all" title="שתייה ואלכוהול: 800 ₪">
+                    שתייה 40%
+                </div>
+                <div style="width: 34.25%" class="bg-fiesta-orange flex items-center justify-center transition-all" title="אוכל ודיפים: 685 ₪">
+                    אוכל 34.3%
+                </div>
+                <div style="width: 22%" class="bg-fiesta-red flex items-center justify-center transition-all" title="פיניאטות וציוד: 440 ₪">
+                    פיניאטות וציוד 22%
+                </div>
+                <div style="width: 3.75%" class="bg-fiesta-cactus flex items-center justify-center transition-all" title="יתרה לבלת״מים: 75 ₪">
+                    3.7%
+                </div>
+            </div>
+
+            <!-- מקרא צבעים -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 text-xs font-medium text-slate-700">
+                <div class="flex items-center gap-2">
+                    <span class="w-3.5 h-3.5 rounded-full bg-fiesta-teal shrink-0"></span>
+                    <span>שתייה ואלכוהול: <strong>800 ₪</strong></span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="w-3.5 h-3.5 rounded-full bg-fiesta-orange shrink-0"></span>
+                    <span>אוכל ודיפים: <strong>685 ₪</strong></span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="w-3.5 h-3.5 rounded-full bg-fiesta-red shrink-0"></span>
+                    <span>פיניאטות וציוד: <strong>440 ₪</strong></span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="w-3.5 h-3.5 rounded-full bg-fiesta-cactus shrink-0"></span>
+                    <span>יתרה לבלת"מים: <strong>75 ₪</strong></span>
+                </div>
+            </div>
+        </section>
+
+        <!-- סרגל ניווט וסינון רכיבי אוכל ושתייה -->
+        <section class="space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/90 backdrop-blur p-4 rounded-2xl shadow-sm border border-amber-200 no-print">
+                <div>
+                    <h3 class="font-display text-lg font-extrabold text-slate-800">📋 פירוט רכיבים, כמויות ועלויות</h3>
+                    <p class="text-xs text-slate-500">לחץ על לשונית לסינון רכיבי האוכל, השתייה או הפיניאטות והציוד</p>
+                </div>
+                <div class="flex flex-wrap gap-2" id="filterTabs">
+                    <button onclick="filterCategory('all')" data-filter="all" class="filter-btn active px-4 py-2 rounded-xl text-sm font-bold transition cursor-pointer bg-slate-900 text-white shadow">
+                        🌟 הכל (1,925 ₪)
+                    </button>
+                    <button onclick="filterCategory('food')" data-filter="food" class="filter-btn px-4 py-2 rounded-xl text-sm font-bold transition cursor-pointer bg-orange-50 text-fiesta-orange hover:bg-orange-100 border border-orange-200">
+                        🥑 רכיבי אוכל ודיפים (685 ₪)
+                    </button>
+                    <button onclick="filterCategory('bar')" data-filter="bar" class="filter-btn px-4 py-2 rounded-xl text-sm font-bold transition cursor-pointer bg-teal-50 text-fiesta-teal hover:bg-teal-100 border border-teal-200">
+                        🍹 רכיבי שתייה ואלכוהול (800 ₪)
+                    </button>
+                    <button onclick="filterCategory('extras')" data-filter="extras" class="filter-btn px-4 py-2 rounded-xl text-sm font-bold transition cursor-pointer bg-red-50 text-fiesta-red hover:bg-red-100 border border-red-200">
+                        🪅 פיניאטות וציוד (440 ₪)
+                    </button>
+                </div>
+            </div>
+
+            <!-- רשימת קניות מפורטת מחולקת לקטגוריות -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" id="categoriesGrid">
+
+                <!-- קטגוריה א': שתייה ואלכוהול -->
+                <div data-category="bar" class="category-card bg-white rounded-3xl shadow-md border border-teal-100 overflow-hidden flex flex-col print-shadow-none page-break-inside">
+                    <div class="bg-fiesta-teal text-white px-6 py-4 flex items-center justify-between">
+                        <div>
+                            <h3 class="font-display text-lg font-bold flex items-center gap-2">
+                                <span>🍹 שתייה ואלכוהול</span>
+                            </h3>
+                            <p class="text-teal-100 text-xs mt-0.5">בר מוחיטו-טקילה (6 בקבוקים)</p>
+                        </div>
+                        <div class="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-xl font-display font-extrabold text-base shrink-0">
+                            800 ₪
+                        </div>
+                    </div>
+                    <div class="p-5 divide-y divide-slate-100 flex-1" id="cat-bar"></div>
+                </div>
+
+                <!-- קטגוריה ב': אוכל ונאצ'וס עם דיפים קנויים -->
+                <div data-category="food" class="category-card bg-white rounded-3xl shadow-md border border-orange-100 overflow-hidden flex flex-col print-shadow-none page-break-inside">
+                    <div class="bg-fiesta-orange text-white px-6 py-4 flex items-center justify-between">
+                        <div>
+                            <h3 class="font-display text-lg font-bold flex items-center gap-2">
+                                <span>🥑 אוכל ונאצ'וס עם דיפים</span>
+                            </h3>
+                            <p class="text-orange-100 text-xs mt-0.5">דיפים קנויים מוכנים + תוספות טריות</p>
+                        </div>
+                        <div class="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-xl font-display font-extrabold text-base shrink-0">
+                            685 ₪
+                        </div>
+                    </div>
+                    <div class="p-5 divide-y divide-slate-100 flex-1" id="cat-food"></div>
+                </div>
+
+                <!-- קטגוריה ג': פיניאטות וציוד -->
+                <div data-category="extras" class="category-card bg-white rounded-3xl shadow-md border border-red-100 overflow-hidden flex flex-col print-shadow-none page-break-inside">
+                    <div class="bg-fiesta-red text-white px-6 py-4 flex items-center justify-between">
+                        <div>
+                            <h3 class="font-display text-lg font-bold flex items-center gap-2">
+                                <span>🪅 פיניאטות וציוד</span>
+                            </h3>
+                            <p class="text-red-100 text-xs mt-0.5">3 פיניאטות, ממתקים וחד-פעמי</p>
+                        </div>
+                        <div class="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-xl font-display font-extrabold text-base shrink-0">
+                            440 ₪
+                        </div>
+                    </div>
+                    <div class="p-5 divide-y divide-slate-100 flex-1" id="cat-extras"></div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- מדריך בזק להכנה והגשה קלה -->
+        <section class="bg-gradient-to-l from-amber-50 via-white to-teal-50 rounded-3xl p-6 sm:p-8 shadow-md border border-amber-200 print-shadow-none page-break-inside">
+            <h3 class="font-display text-2xl font-extrabold text-slate-800 mb-5 flex items-center gap-2">
+                <span>⚡ מדריך בזק להכנה והגשה במינימום מאמץ</span>
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- טיפ בר מוחיטו -->
+                <div class="bg-white p-5 rounded-2xl border border-teal-100 shadow-sm space-y-2">
+                    <div class="inline-block px-3 py-1 rounded-lg bg-teal-50 text-fiesta-teal font-bold text-xs">
+                        🍸 בר מוחיטו-טקילה ב-10 שניות לכוס
+                    </div>
+                    <h4 class="font-display font-bold text-lg text-slate-900">הכנת סירופ סוכר מראש (חוסך המון זמן!)</h4>
+                    <p class="text-sm text-slate-600 leading-relaxed">
+                        מערבבים בבקבוק <strong>1 ק"ג סוכר עם 1 ליטר מים רותחים</strong> עד להמסה מלאה ומקררים. סוחטים את הלימונים מראש לבקבוק נפרד.
+                    </p>
+                    <div class="bg-slate-50 p-3 rounded-xl text-xs text-slate-700 font-medium border border-slate-200">
+                        <strong>הרכבת כוס:</strong> מועכים קלות 5–6 עלי נענע בתחתית הכוס ➔ ממלאים קרח ➔ מוזגים <strong>45 מ"ל טקילה</strong> + <strong>25 מ"ל מיץ לימון</strong> + <strong>20 מ"ל סירופ סוכר</strong> ➔ סוגרים עם סודה קרה!
+                    </div>
+                </div>
+
+                <!-- טיפ שדרוג דיפים קנויים -->
+                <div class="bg-white p-5 rounded-2xl border border-orange-100 shadow-sm space-y-2">
+                    <div class="inline-block px-3 py-1 rounded-lg bg-orange-50 text-fiesta-orange font-bold text-xs">
+                        🌮 שדרוג הדיפים הקנויים ב-2 דקות
+                    </div>
+                    <h4 class="font-display font-bold text-lg text-slate-900">מראה של מסעדה מקסיקנית בלי לבשל</h4>
+                    <p class="text-sm text-slate-600 leading-relaxed">
+                        מעבירים את הדיפים הקנויים לקעריות הגשה רחבות ומוסיפים טאץ' טרי מלמעלה שמשדרג את הטעם והנראות:
+                    </p>
+                    <ul class="text-xs text-slate-700 space-y-1.5 list-disc list-inside bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <li><strong>דיפ הצ'דר הקנוי:</strong> מחממים 40 שניות במיקרוגל לפני ההגשה ומפזרים מעל טבעות חלפניו.</li>
+                        <li><strong>הגוואקמולי והסלסה:</strong> מפזרים מעל קוביות קטנות של בצל סגול, עגבניות וכוסברה טרייה קצוצה.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- פוטר חגיגי -->
+        <footer class="text-center text-xs text-slate-500 pb-6 pt-2">
+            <p>תוכנן באהבה עבור ההאפי אוור של המעבדה • מוקדש לד״ר ענת בהט 🌵🎉</p>
+        </footer>
+
+    </main>
+
+    <!-- פס תחתון חגיגי -->
+    <div class="h-3 w-full papel-picado-border"></div>
+
+    <script>
+        // מאגר הנתונים המלא והמעודכן (800 ₪ שתייה + 685 ₪ אוכל + 440 ₪ פיניאטות וציוד = 1,925 ₪)
+        const shoppingData = {
+            bar: [
+                { id: 'b1', name: 'טקילה (סיירה / חוזה קוארבו)', qty: '6 בקבוקים × 700 מ"ל', total: 630 },
+                { id: 'b2', name: 'סודה 1.5 ליטר', qty: '2 שישיות', total: 36 },
+                { id: 'b3', name: 'לימון / ליים טרי', qty: '3 ק"ג', total: 27 },
+                { id: 'b4', name: 'נענע טרייה', qty: '8 מארזים', total: 48 },
+                { id: 'b5', name: 'סוכר לבן להכנת סירופ סוכר', qty: '2 ק"ג', total: 11 },
+                { id: 'b6', name: 'קרח', qty: '4 שקים', total: 48 }
+            ],
+            food: [
+                { id: 'f1', name: 'נאצ\'וס / טורטייה צ\'יפס (322 גרם)', qty: '18 שקיות', total: 322 },
+                { id: 'f2', name: 'גוואקמולי מוכן קנוי', qty: '5 קופסאות', total: 95 },
+                { id: 'f3', name: 'סלסת עגבניות מוכנה', qty: '4 צנצנות', total: 64 },
+                { id: 'f4', name: 'דיפ גבינת צ\'דר מוכן', qty: '3 צנצנות / מארזים', total: 72 },
+                { id: 'f5', name: 'שמנת חמוצה', qty: '4 גביעים', total: 16 },
+                { id: 'f6', name: 'חלפניו כבוש', qty: '2 צנצנות', total: 24 },
+                { id: 'f7', name: 'עגבניות (1.5 ק"ג) + בצל סגול (1 ק"ג) + כוסברה (3 מארזים) לקיצוץ טרי מעל', qty: 'סט ירק טרי', total: 42 },
+                { id: 'f8', name: 'שתייה קלה ללא אלכוהול', qty: '4 בקבוקים', total: 50 }
+            ],
+            extras: [
+                { id: 'e1', name: 'פיניאטות מקסיקניות (קקטוס / חמור / כוכב)', qty: '3 פיניאטות', total: 195 },
+                { id: 'e2', name: 'מילוי ממתקים ושוקולדים עטופים ל-3 פיניאטות', qty: 'מארזי ממתקים', total: 100 },
+                { id: 'e3', name: 'חבל תלייה ומקל', qty: 'סט תלייה וחבטה', total: 15 },
+                { id: 'e4', name: 'כלים חד-פעמיים (כוסות קוקטייל, קעריות לנאצ\'וס, מפיות, קשים)', qty: 'סט ל-60 איש', total: 130 }
+            ]
+        };
+
+        // טעינת סימונים שמורים מ-localStorage אם קיימים
+        let checkedItems = {};
+        try {
+            checkedItems = JSON.parse(localStorage.getItem('mexican_hh_checked_v2') || '{}');
+        } catch (e) {
+            checkedItems = {};
+        }
+
+        function renderCategory(containerId, items) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = items.map(item => {
+                const isChecked = !!checkedItems[item.id];
+                return `
+                    <label for="${item.id}" class="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-3 cursor-pointer group select-none">
+                        <div class="flex items-start gap-2.5">
+                            <input type="checkbox" id="${item.id}" ${isChecked ? 'checked' : ''}
+                                onchange="toggleItem('${item.id}')"
+                                class="mt-1 w-4 h-4 rounded border-slate-300 text-fiesta-cactus focus:ring-fiesta-cactus cursor-pointer no-print">
+                            <div class="${isChecked ? 'line-through text-slate-400' : 'text-slate-800'} transition-colors">
+                                <div class="font-bold text-sm group-hover:text-fiesta-teal transition-colors leading-snug">${item.name}</div>
+                                <div class="text-xs text-slate-500 mt-0.5 font-semibold">${item.qty}</div>
+                            </div>
+                        </div>
+                        <div class="font-display font-extrabold text-sm ${isChecked ? 'text-slate-400' : 'text-slate-900'} bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 shrink-0">
+                            ${item.total} ₪
+                        </div>
+                    </label>
+                `;
+            }).join('');
+        }
+
+        function updateCounter() {
+            const totalItems = Object.values(shoppingData).flat().length;
+            const checkedCount = Object.values(checkedItems).filter(Boolean).length;
+            const counterEl = document.getElementById('checkedCounter');
+            if (counterEl) {
+                counterEl.textContent = `${checkedCount} / ${totalItems} פריטים סומנו`;
+            }
+        }
+
+        function renderAll() {
+            renderCategory('cat-bar', shoppingData.bar);
+            renderCategory('cat-food', shoppingData.food);
+            renderCategory('cat-extras', shoppingData.extras);
+            updateCounter();
+        }
+
+        window.toggleItem = function(id) {
+            checkedItems[id] = !checkedItems[id];
+            try {
+                localStorage.setItem('mexican_hh_checked_v2', JSON.stringify(checkedItems));
+            } catch (e) {}
+            renderAll();
+        };
+
+        window.resetChecklist = function() {
+            checkedItems = {};
+            try {
+                localStorage.removeItem('mexican_hh_checked_v2');
+            } catch (e) {}
+            renderAll();
+        };
+
+        window.filterCategory = function(category) {
+            const cards = document.querySelectorAll('.category-card');
+            const buttons = document.querySelectorAll('.filter-btn');
+            const grid = document.getElementById('categoriesGrid');
+
+            cards.forEach(card => {
+                if (category === 'all' || card.dataset.category === category) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            // התאמת פריסת הגריד כאשר מוצגת קטגוריה בודדת
+            if (category !== 'all') {
+                grid.classList.remove('lg:grid-cols-3');
+                grid.classList.add('grid-cols-1', 'max-w-2xl', 'mx-auto');
+            } else {
+                grid.classList.remove('grid-cols-1', 'max-w-2xl', 'mx-auto');
+                grid.classList.add('lg:grid-cols-3');
+            }
+
+            // עדכון עיצוב הכפתור הפעיל
+            buttons.forEach(btn => {
+                const isSelected = btn.dataset.filter === category;
+                btn.classList.remove('bg-slate-900', 'text-white', 'shadow', 'ring-2', 'ring-offset-1', 'ring-slate-400');
+                if (isSelected) {
+                    btn.classList.add('bg-slate-900', 'text-white', 'shadow', 'ring-2', 'ring-offset-1', 'ring-slate-400');
+                }
+            });
+        };
+
+        window.printAll = function() {
+            filterCategory('all');
+            setTimeout(() => window.print(), 100);
+        };
+
+        // אתחול בטעינה
+        renderAll();
+    </script>
+</body>
+</html>
