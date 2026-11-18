@@ -32,6 +32,7 @@
         label span { color: #8394a0; font-weight: 400; }
         input, select, textarea, button { font: inherit; }
         input, select, textarea { width: 100%; min-height: 44px; border: 1px solid #ccd9dd; border-radius: 8px; padding: 0 12px; color: #1e293b; background-color: #ffffff; }
+        input[type="file"] { padding: 8px 12px; }
         textarea { resize: vertical; }
         select, select option { color: #1e293b; background-color: #ffffff; }
         input:focus, select:focus, textarea:focus, button:focus-visible { outline: 3px solid #c8e9e9; outline-offset: 1px; border-color: var(--teal); }
@@ -106,6 +107,7 @@
                     <div class="field"><label for="sortingGroup">Sorting group</label><select id="sortingGroup" required><option>Weizmann Warehouse</option><option>External Supplier</option></select></div>
                     <div class="field"><label for="deliveryDate">Expected delivery date <span>Optional</span></label><input type="date" id="deliveryDate"></div>
                     <div class="field"><label for="status">Status</label><select id="status" required><option>Pending</option><option>Ordered</option><option>Delivered</option><option>Cancelled</option></select></div>
+                    <div class="field"><label for="quoteFile">Price Quote (PDF) <span>Optional, max 4 MiB</span></label><input type="file" id="quoteFile" accept=".pdf,application/pdf"></div>
                 </div>
                 <div class="actions"><button class="primary" type="submit" data-mutation disabled>Add to orders</button><button class="secondary" type="reset">Reset form</button></div>
             </form>
@@ -124,7 +126,7 @@
             </div>
             <div class="table-wrap">
                 <table>
-                    <thead><tr><th>Insert date</th><th>Lab member name</th><th>Ordered item</th><th>Quantity</th><th>Product name</th><th>Serial number</th><th>Sorting group</th><th>Expected delivery date</th><th>Status</th><th>Actions</th></tr></thead>
+                    <thead><tr><th>Insert date</th><th>Lab member name</th><th>Ordered item</th><th>Quantity</th><th>Product name</th><th>Serial number</th><th>Sorting group</th><th>Expected delivery date</th><th>Status</th><th>Actual order date</th><th>Order number</th><th>Price quote</th><th>Actions</th></tr></thead>
                     <tbody id="tableBody"></tbody>
                 </table>
             </div>

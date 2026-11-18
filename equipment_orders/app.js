@@ -13,15 +13,18 @@ const firebaseConfig = {
 };
 
 const storageKey = 'dikstein-lab-orders-v1';
+const maxQuoteBytes = 4 * 1024 * 1024;
+const quotePrefix = 'data:application/pdf;base64,';
 const members = ['Prof. Rivka Dikstein', 'Dr. Anat Bahat', 'Dr. Ariel Ogran', 'Dr. Benjamin Weiss', 'Daniella Dayagi', 'Ehud Elfer', 'Elad Itzhaki', 'Elad Kotler', 'Marina Pinsker', 'Raaya Rosenbaum', 'Saja Saaida'];
 const groups = ['Weizmann Warehouse', 'External Supplier'];
 const statuses = ['Pending', 'Ordered', 'Delivered', 'Cancelled'];
 const columns = [
     ['insertDate', 'Insert Date'], ['memberName', 'Lab Member Name'], ['orderedItem', 'Ordered Item'],
     ['quantity', 'Quantity'], ['productName', 'Product Name'], ['serialNumber', 'Serial Number'],
-    ['sortingGroup', 'Sorting Group'], ['deliveryDate', 'Expected Delivery Date'], ['status', 'Status']
+    ['sortingGroup', 'Sorting Group'], ['deliveryDate', 'Expected Delivery Date'], ['status', 'Status'],
+    ['actualOrderDate', 'Actual Order Date'], ['orderNumber', 'Order Number'], ['quoteFileName', 'Price Quote']
 ];
-const optional = new Set(['productName', 'serialNumber', 'deliveryDate', 'quantity']);
+const optional = new Set(['productName', 'serialNumber', 'deliveryDate', 'quantity', 'actualOrderDate', 'orderNumber', 'quoteFileName']);
 const $ = id => document.getElementById(id);
 let orders = [];
 let connected = false;
@@ -29,6 +32,7 @@ let readable = false;
 let busy = false;
 let editing = null;
 let editControls = null;
+const orderNumberDrafts = new Map();
 let realtime;
 let database;
 let ordersRef;
@@ -61,6 +65,9 @@ function updateControls() {
     document.querySelectorAll('#tableBody button').forEach(button => {
         button.disabled = button.dataset.action === 'cancel' ? busy
             : !writable || button.dataset.conflict === 'true' || (Boolean(editing) && button.dataset.action === 'other');
+    });
+    document.querySelectorAll('#tableBody [data-order-number]').forEach(input => {
+        input.disabled = !writable || Boolean(editing);
     });
 }
 function today() {
@@ -98,12 +105,44 @@ function validateOrder(item) {
         order[key] = value.trim();
         if (!optional.has(key) && !order[key]) throw new Error(`${label} is required.`);
     }
-    if (!validDate(order.insertDate) || (order.deliveryDate && !validDate(order.deliveryDate))) {
+    if (!validDate(order.insertDate) || (order.deliveryDate && !validDate(order.deliveryDate))
+        || (order.actualOrderDate && !validDate(order.actualOrderDate))) {
         throw new Error('Dates must be valid and use YYYY-MM-DD.');
     }
     if (!groups.includes(order.sortingGroup)) throw new Error('Invalid sorting group.');
     if (!statuses.includes(order.status)) throw new Error('Invalid status.');
+    const quoteData = item.quoteFileData === undefined ? '' : item.quoteFileData;
+    if (typeof quoteData !== 'string') throw new Error('Price quote data must be text.');
+    if (quoteData) {
+        const base64 = quoteData.startsWith(quotePrefix) ? quoteData.slice(quotePrefix.length) : '';
+        const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0;
+        if (!order.quoteFileName || !base64.startsWith('JVBERi0') || base64.length % 4 !== 0
+            || !/^[A-Za-z0-9+/]*={0,2}$/.test(base64)
+            || base64.length / 4 * 3 - padding > maxQuoteBytes) {
+            throw new Error('Price quote must be a PDF no larger than 4 MiB.');
+        }
+    }
+    order.quoteFileData = quoteData;
     return order;
+}
+function readQuote(file) {
+    if (!file) return Promise.resolve({ quoteFileName: '', quoteFileData: '' });
+    if (!file.name.toLowerCase().endsWith('.pdf') || file.size > maxQuoteBytes) {
+        return Promise.reject(new Error('Choose a PDF no larger than 4 MiB.'));
+    }
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('Could not read the price quote.'));
+        reader.onabort = () => reject(new Error('Reading the price quote was cancelled.'));
+        reader.onload = () => {
+            if (typeof reader.result !== 'string' || !reader.result.includes(',')) {
+                reject(new Error('Could not read the price quote.'));
+                return;
+            }
+            resolve({ quoteFileName: file.name, quoteFileData: quotePrefix + reader.result.split(',')[1] });
+        };
+        reader.readAsDataURL(file);
+    });
 }
 function parseOrders(value) {
     if (!Array.isArray(value)) throw new Error('The file must contain an array of orders.');
@@ -129,12 +168,15 @@ function sameOrder(left, right) {
 }
 function captureDraft() {
     if (!editing || !editControls) return;
-    const draft = Object.fromEntries(columns.map(([key]) => [key, editControls[key].value]));
+    const draft = { ...editing.draft, ...Object.fromEntries(columns.filter(([key]) => key !== 'quoteFileName').map(([key]) => [key, editControls[key].value])) };
     if (draft.memberName === 'Other') draft.memberName = editControls.otherName.value;
     editing.draft = draft;
 }
 function applyOrders(next) {
     captureDraft();
+    for (const id of orderNumberDrafts.keys()) {
+        if (!next.some(order => order.id === id)) orderNumberDrafts.delete(id);
+    }
     if (editing && !busy) {
         const current = next.find(order => order.id === editing.baseline.id);
         if (!current) {
@@ -185,6 +227,17 @@ function createButton(text, style, action) {
     button.addEventListener('click', action);
     return button;
 }
+function renderQuote(cell, order) {
+    if (order.quoteFileData) {
+        const link = document.createElement('a');
+        link.href = order.quoteFileData;
+        link.download = order.quoteFileName;
+        link.textContent = order.quoteFileName;
+        cell.append(link);
+    } else {
+        cell.textContent = order.quoteFileName ? `${order.quoteFileName} (file not included)` : '—';
+    }
+}
 function renderOrders() {
     const body = $('tableBody');
     body.replaceChildren();
@@ -201,7 +254,9 @@ function renderOrders() {
         const controls = {};
         for (const [key, label] of columns) {
             const cell = document.createElement('td');
-            if (isEditing) {
+            if (key === 'quoteFileName') {
+                renderQuote(cell, order);
+            } else if (isEditing) {
                 let input;
                 if (key === 'memberName') {
                     input = makeSelect([...members, 'Other'], members.includes(values[key]) ? values[key] : 'Other', label);
@@ -215,18 +270,57 @@ function renderOrders() {
                     cell.append(input, other);
                 } else if (key === 'sortingGroup' || key === 'status') {
                     input = makeSelect(key === 'status' ? statuses : groups, values[key], label);
+                    if (key === 'status') {
+                        let previous = input.value;
+                        input.addEventListener('change', () => {
+                            if (input.value === 'Ordered' && previous !== 'Ordered') controls.actualOrderDate.value = today();
+                            previous = input.value;
+                        });
+                    }
                     cell.append(input);
                 } else {
-                    const isDate = key === 'insertDate' || key === 'deliveryDate';
+                    const isDate = key === 'insertDate' || key === 'deliveryDate' || key === 'actualOrderDate';
                     input = document.createElement(isDate || key === 'quantity' ? 'input' : 'textarea');
                     if (isDate) input.type = 'date';
                     if (key === 'quantity') { input.type = 'number'; input.min = '1'; input.step = '1'; }
+                    if (key === 'orderNumber') input.placeholder = 'Enter Order #...';
                     input.value = values[key];
                     input.required = !optional.has(key) || key === 'quantity';
                     input.setAttribute('aria-label', label);
                     cell.append(input);
                 }
                 controls[key] = input;
+            } else if (key === 'orderNumber' && ['Ordered', 'Delivered'].includes(order.status)) {
+                const input = document.createElement('input');
+                const draft = orderNumberDrafts.get(order.id);
+                input.value = draft ? draft.value : order.orderNumber;
+                input.placeholder = 'Enter Order #...';
+                input.setAttribute('aria-label', `Order number for ${order.orderedItem}`);
+                input.dataset.orderNumber = '';
+                input.addEventListener('input', () => {
+                    if (input.value === order.orderNumber) orderNumberDrafts.delete(order.id);
+                    else {
+                        const pending = orderNumberDrafts.get(order.id);
+                        orderNumberDrafts.set(order.id, { value: input.value, baseline: pending ? pending.baseline : order.orderNumber });
+                    }
+                });
+                const saveNumber = createButton('Save number', 'secondary', async () => {
+                    try {
+                        const pending = orderNumberDrafts.get(order.id);
+                        if (pending && pending.baseline !== order.orderNumber) {
+                            orderNumberDrafts.set(order.id, { value: input.value, baseline: order.orderNumber });
+                            showMessage('The order number changed elsewhere. Review your value and save again to overwrite it.', true);
+                            return;
+                        }
+                        const updated = validateOrder({ ...order, orderNumber: input.value });
+                        if (await commit('edit', [updated], order)) {
+                            orderNumberDrafts.delete(order.id);
+                            showMessage('Order number updated.');
+                        }
+                    } catch (error) { showMessage(error.message, true); }
+                });
+                saveNumber.dataset.action = 'other';
+                cell.append(input, saveNumber);
             } else if (key === 'status') {
                 const badge = document.createElement('span');
                 badge.className = `badge badge-${order[key].toLowerCase()}`;
@@ -291,7 +385,11 @@ async function commit(kind, incoming, baseline = null) {
             if (!current || !sameOrder(current, baseline)) throw new Error('This order changed elsewhere. Cancel and reopen it.');
             const orderRef = realtime.ref(database, `orders/${baseline.id}`);
             if (kind === 'delete') await realtime.remove(orderRef);
-            else await realtime.update(orderRef, withoutId(incoming[0]));
+            else {
+                const changes = Object.fromEntries(Object.entries(withoutId(incoming[0]))
+                    .filter(([key, value]) => value !== baseline[key]));
+                if (Object.keys(changes).length) await realtime.update(orderRef, changes);
+            }
             result = { added: 0, skipped: 0 };
         } else if (kind === 'add') {
             await realtime.push(ordersRef, withoutId(incoming[0]));
@@ -460,7 +558,16 @@ $('orderForm').addEventListener('submit', async event => {
         return;
     }
     try {
-        const data = Object.fromEntries(columns.map(([key]) => [key, $(key).value]));
+        if (!connected || busy) throw new Error('Changes are unavailable while the app is disconnected or another save is in progress.');
+        busy = true;
+        updateControls();
+        let quote;
+        try { quote = await readQuote($('quoteFile').files[0]); }
+        finally { busy = false; updateControls(); }
+        const data = Object.fromEntries(columns.filter(([key]) => $(key)).map(([key]) => [key, $(key).value]));
+        Object.assign(data, quote);
+        data.actualOrderDate = data.status === 'Ordered' ? today() : '';
+        data.orderNumber = '';
         if (data.memberName === 'Other') data.memberName = $('otherName').value;
         const result = await commit('add', [validateOrder(data)]);
         if (result) {

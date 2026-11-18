@@ -19,11 +19,17 @@ CSV exports prefix formula-like cells with a tab to reduce spreadsheet formula
 injection; use JSON for an exact external backup. An identical pending item
 produces a warning but can still be ordered again.
 
+Price quotes are optional PDF files up to 4 MiB, stored in the shared database.
+JSON backups include the PDF; CSV backups include its filename only, so a CSV
+import cannot restore the file. The actual order date is set when an order
+changes to Ordered and can be adjusted when editing. Ordered and Delivered
+rows provide an order-number field.
+
 ### Enable Realtime Database live sync
 
 **Public access warning:** If the Realtime Database rules permit this no-login
 app to read and write, *anyone on the internet* can read, add, edit and delete
-orders and consume your Firebase quota. Use only non-sensitive data; a private
+orders and attached PDFs and consume your Firebase quota. Use only non-sensitive data; a private
 lab database requires authentication and restrictive rules. Monitor usage and
 billing in Firebase.
 
